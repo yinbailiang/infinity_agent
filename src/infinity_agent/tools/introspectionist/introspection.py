@@ -11,7 +11,7 @@ from typing import (
     get_type_hints,
 )
 
-from llm.tools.introspectionist.model_builder import ReturnModelInfo
+from infinity_agent.tools.introspectionist.model_builder import ReturnModelInfo
 
 from ...models import ToolDefinition
 from .convert import prop_from_schema, resolve_refs

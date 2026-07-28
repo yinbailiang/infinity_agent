@@ -1,9 +1,9 @@
 # InfinityLLM — Async LLM Client
 
-[![Test](https://github.com/yinbailiang/infinity_llm/actions/workflows/test.yml/badge.svg)](https://github.com/yinbailiang/infinity_llm/actions/workflows/test.yml)
+[![Test](https://github.com/yinbailiang/infinity_agent/actions/workflows/test.yml/badge.svg)](https://github.com/yinbailiang/infinity_agent/actions/workflows/test.yml)
 [![Pyright](https://img.shields.io/badge/pyright-strict-blue)](ENGINEERING.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE.md)
-[![Supported Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://pypi.org/project/infinity_llm/)
+[![Supported Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://pypi.org/project/infinity_agent/)
 
 **强类型、可扩展的 LLM 异步客户端库 — 支持 OpenAI 兼容 API、流式对话、工具调用。**
 
@@ -22,13 +22,13 @@
 ## 📦 Installation
 
 ```bash
-pip install infinity_llm
+pip install infinity_agent
 ```
 
 ## 🚀 Quick Start
 
 ```python
-from llm import (
+from infinity_agent import (
     Message, Messages,
     OpenAIConfig, create_client,
     ToolRegistry,
@@ -55,7 +55,7 @@ async with client:
 ## 🧱 Architecture
 
 ```
-llm/
+infinity_agent/
 ├── clients/          # 客户端抽象 + provider 实现
 │   ├── base.py       #   LLMClient 抽象基类
 │   ├── config.py     #   ConnectionConfig / LLMConfig

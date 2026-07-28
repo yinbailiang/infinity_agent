@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Never, Op
 from pydantic import BaseModel, Field, RootModel, create_model
 from pydantic.fields import FieldInfo
 
-from llm.models.tools import RAW_RETURN
+from infinity_agent.models.tools import RAW_RETURN
 
 logger = logging.getLogger(__name__)
 

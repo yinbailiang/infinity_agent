@@ -17,10 +17,10 @@ from infinity_agent import (
     ToolCall,
     ToolCallCompleteChunk,
 )
-from llm.clients import OpenAIConfig, OpenAIRequestConfig, create_client
-from llm.clients.exceptions import LLMNetworkError
-from llm.models.tools import Raw
-from llm.tools import ToolRegistry
+from infinity_agent.clients import OpenAIConfig, OpenAIRequestConfig, create_client
+from infinity_agent.clients.exceptions import infinity_agentNetworkError
+from infinity_agent.models.tools import Raw
+from infinity_agent.tools import ToolRegistry
 
 logging.basicConfig(
     level=logging.DEBUG,

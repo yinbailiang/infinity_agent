@@ -5,7 +5,7 @@
 支持流畅构建、JSON Schema 兼容输出、从描述文件加载。
 
 用法:
-    from components.llm.models.tools import ToolDefinition, ParameterProperty
+    from components.infinity_agent.models.tools import ToolDefinition, ParameterProperty
 
     # 自动推断（推荐）
     @registry.tool(description="获取天气")

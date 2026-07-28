@@ -4,7 +4,7 @@ import types
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Optional
 
-from llm.clients.config import RequestConfig
+from infinity_agent.clients.config import RequestConfig
 
 from ..models import (
     Message,
