@@ -1,4 +1,4 @@
-# InfinityLLM — Async LLM Client
+# InfinityAgent — Async LLM Client
 
 [![Test](https://github.com/yinbailiang/infinity_agent/actions/workflows/test.yml/badge.svg)](https://github.com/yinbailiang/infinity_agent/actions/workflows/test.yml)
 [![Pyright](https://img.shields.io/badge/pyright-strict-blue)](ENGINEERING.md)
