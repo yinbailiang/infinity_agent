@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_serializer
 
+from ...models.tools import ToolDefinitions
+
 
 class JsonSchema(BaseModel):
     """JSON Schema 模式 — 结构化输出的 schema 定义
@@ -54,7 +56,7 @@ class ChatCompletionRequest(BaseModel):
     messages: List[Dict[str, Any]] = Field(description='消息列表')
     stream: bool = Field(default=False, description='是否启用流式响应')
     stream_options: Optional[StreamOptions] = Field(default=None, description='流式选项')
-    tools: Optional[List[Dict[str, Any]]] = Field(default=None, description='工具定义列表')
+    tools: Optional[ToolDefinitions] = Field(default=None, description='工具定义列表')
     response_format: Optional[ResponseFormat] = Field(default=None, description='响应格式约束')
     temperature: Optional[float] = Field(default=None, ge=0, le=2, description='采样温度')
     max_tokens: Optional[int] = Field(default=None, gt=0, description='最大生成 token 数')

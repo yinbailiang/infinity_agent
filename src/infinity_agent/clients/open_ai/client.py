@@ -186,7 +186,7 @@ class OpenAIClient(LLMClient):
             stream=True,
         )
         if request_config.tools:
-            payload.tools = [t.model_dump_tool() for t in request_config.tools]
+            payload.tools = request_config.tools
         if request_config.include_usage:
             payload.stream_options = StreamOptions(include_usage=True)
         if request_config.response_format:
