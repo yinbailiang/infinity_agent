@@ -18,7 +18,7 @@ from infinity_agent import (
     ToolCallCompleteChunk,
 )
 from infinity_agent.clients import OpenAIConfig, OpenAIRequestConfig, create_client
-from infinity_agent.clients.exceptions import infinity_agentNetworkError
+from infinity_agent.clients.exceptions import LLMNetworkError
 from infinity_agent.models.tools import Raw
 from infinity_agent.tools import ToolRegistry
 
