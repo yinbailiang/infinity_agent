@@ -28,9 +28,9 @@ from ..exceptions import (
     LLMStreamError,
 )
 from .aggregation import aggregate_tool_call_deltas
-from .config import OpenAIConfig, OpenAIRequestConfig
+from .config import OpenAIConfig, OpenAIRequestConfig, build_chat_completion_request
 from .connection import ConnectionManager
-from .request_models import ChatCompletionRequest, StreamOptions
+from .request_models import ChatCompletionRequest
 from .response_models import (
     Choice,
     StreamEvent,
@@ -179,19 +179,13 @@ class OpenAIClient(LLMClient):
         messages: Messages,
         request_config: OpenAIRequestConfig,
     ) -> ChatCompletionRequest:
-        """构建流式请求模型。"""
-        payload = ChatCompletionRequest(
-            model=self._config.model,
-            messages=[m.model_dump(mode='json') for m in messages],
+        """构建流式请求模型，委托给 ``build_chat_completion_request``。"""
+        return build_chat_completion_request(
+            messages,
+            self._config,
+            request_config,
             stream=True,
         )
-        if request_config.tools:
-            payload.tools = request_config.tools
-        if request_config.include_usage:
-            payload.stream_options = StreamOptions(include_usage=True)
-        if request_config.response_format:
-            payload.response_format = request_config.response_format
-        return payload
 
     async def _handle_sse_event(
         self,

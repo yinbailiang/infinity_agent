@@ -1,6 +1,6 @@
 """OpenAI 兼容 API 配置模型"""
 
-from typing import List, Literal, Optional
+from typing import TYPE_CHECKING, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -9,7 +9,10 @@ from ..base import LLMClient
 from ..config import ClientConfig, RequestConfig
 from ..exceptions import LLMConfigError
 from ..provider import register_client
-from .request_models import ResponseFormat
+from .request_models import ChatCompletionRequest, ResponseFormat, StreamOptions
+
+if TYPE_CHECKING:
+    from ...models.messages import Messages
 
 
 class OpenAIConnectionConfig(BaseModel):
@@ -47,6 +50,41 @@ class OpenAIRequestConfig(RequestConfig):
         default=None,
         description='响应格式约束（JSON 模式 / 结构化输出）',
     )
+
+
+def build_chat_completion_request(
+    messages: 'Messages',
+    /,
+    model_config: OpenAIConfig,
+    request_config: OpenAIRequestConfig | None = None,
+    *,
+    stream: bool = True,
+) -> ChatCompletionRequest:
+    """从 ``OpenAIConfig`` + ``OpenAIRequestConfig`` + 消息列表构建请求体。
+
+    这是 ``_build_stream_payload`` 的独立可复用版本，
+    方便在客户端之外（如测试、脚本、工具调用）直接构造请求模型。
+
+    :param messages: 对话消息列表（:class:`Message` 实例）
+    :param model_config: 模型与连接配置
+    :param request_config: 请求级别配置（工具、用量统计、响应格式等）
+    :param stream: 是否启用流式响应，默认 ``True``
+    :return: 可直接序列化为 JSON 的请求体
+    """
+    req_config = request_config or OpenAIRequestConfig()
+
+    payload = ChatCompletionRequest(
+        model=model_config.model,
+        messages=[m.model_dump(mode='json') for m in messages],
+        stream=stream,
+    )
+    if req_config.tools:
+        payload.tools = req_config.tools
+    if req_config.include_usage:
+        payload.stream_options = StreamOptions(include_usage=True)
+    if req_config.response_format:
+        payload.response_format = req_config.response_format
+    return payload
 
 
 @register_client('openai')
