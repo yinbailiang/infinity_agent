@@ -1,0 +1,114 @@
+[project]
+name = "infinity_llm_client"
+version = "0.1.0"
+description = "强类型、可扩展的 LLM 异步客户端库，支持 OpenAI 兼容 API、流式对话、工具调用与多模型消息格式"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "infinity_system: yin_bailiang" }
+]
+keywords = [
+    "llm",
+    "openai",
+    "async",
+    "asyncio",
+    "function-calling",
+    "tool-calling",
+    "streaming",
+    "chat",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Framework :: AsyncIO",
+]
+requires-python = ">=3.12"
+
+dependencies = [
+    "pydantic",
+    "aiohttp",
+]
+
+[project.urls]
+Repository = "https://github.com/yinbailiang/infinity_llm"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+]
+dev = [
+    "interrogate",
+    "ruff",
+    "pyright",
+    "pre-commit",
+    "infinity_llm_client[test]",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "-m 'not slow'"
+markers = [
+    "slow: long-running stress / stability tests",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = ["tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "ASYNC",  # async/await best practices
+    "PLE",    # pylint errors
+]
+ignore = [
+    "E501",     # line too long (handled by formatter)
+    "ASYNC109", # async function with timeout parameter (intentional API design)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["llm"]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "single"
+line-ending = "lf"
+
+[tool.pyright]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportMissingImports = "error"
+exclude = ["tests", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
+venvPath = "."
+venv = ".venv"
+
+[tool.interrogate]
+fail-under = 60
+ignore-init-method = true
+ignore-init-module = true
+ignore-magic = true
+ignore-private = true
+ignore-semiprivate = true
+ignore-nested-functions = true
+exclude = ["tests", "benchmarks", "experimental", "docs"]

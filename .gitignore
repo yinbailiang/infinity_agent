@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv/
+venv/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ruff
+.ruff_cache/
+
+# uv
+uv.lock
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Experimental / lab
+experimental/
+
+# Logs
+logs/
+*.log
+
+# Agent runtime data
+.agents/MEMORY/memorys/*
+.agents/TEMP_FILES/tmps/*
+
+!.agents/MEMORY/memorys/.gitkeep
+!.agents/TEMP_FILES/tmps/.gitkeep
