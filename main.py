@@ -9,7 +9,7 @@ from typing import Annotated, Optional
 
 from pydantic import Field
 
-from llm import (
+from infinity_agent import (
     Message,
     Messages,
     StreamChunk,
