@@ -3,11 +3,13 @@
 import inspect
 import logging
 import typing
+from copy import copy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Never, Optional, get_args, get_origin
 
 from pydantic import BaseModel, Field, RootModel, create_model
 from pydantic.fields import FieldInfo
+from pydantic_core import PydanticUndefined
 
 from infinity_agent.models.tools import RAW_RETURN
 
@@ -23,12 +25,57 @@ if TYPE_CHECKING:
 else:
 
     class _TypeFormMeta(type):
+        """TypeForm运行时元类"""
+
         def __instancecheck__(cls, _) -> Literal[True]:
             return True
 
     class TypeForm(metaclass=_TypeFormMeta):
+        """TypeForm运行时类型"""
+
         def __new__(cls, *args: Any, **kwargs: Any) -> Never:
             raise TypeError('TypeForm cannot be instantiated')
+
+
+def merge_field_infos(*field_infos: FieldInfo, **overrides: Any) -> FieldInfo:
+    """Merge `FieldInfo` instances keeping only explicitly set attributes.
+
+    Later `FieldInfo` instances override earlier ones.
+
+    Returns:
+        FieldInfo: A merged FieldInfo instance.
+    """
+    flattened_field_infos: list[FieldInfo] = []
+    for field_info in field_infos:
+        flattened_field_infos.extend(x for x in field_info.metadata if isinstance(x, FieldInfo))
+        flattened_field_infos.append(field_info)
+    field_infos = tuple(flattened_field_infos)
+    if len(field_infos) == 1:
+        # No merging necessary, but we still need to make a copy and apply the overrides
+        field_info = copy(field_infos[0])
+        field_info._attributes_set.update(overrides)  # pyright: ignore[reportPrivateUsage]
+
+        default_override = overrides.pop('default', PydanticUndefined)
+        if default_override is Ellipsis:
+            default_override = PydanticUndefined
+        if default_override is not PydanticUndefined:
+            field_info.default = default_override
+
+        for k, v in overrides.items():
+            setattr(field_info, k, v)
+        return field_info  # type: ignore
+
+    new_kwargs: dict[str, Any] = {}
+    metadata: dict[Any, Any] = {}
+    for field_info in field_infos:
+        new_kwargs.update(field_info._attributes_set)  # type: ignore
+        for x in field_info.metadata:
+            if not isinstance(x, FieldInfo):
+                metadata[type(x)] = x
+    new_kwargs.update(overrides)
+    field_info = FieldInfo(**new_kwargs)
+    field_info.metadata = list(metadata.values())
+    return field_info
 
 
 @dataclass(frozen=True)
@@ -91,7 +138,7 @@ def normalize_annotated(type_form: TypeForm) -> TypeForm:
         if descriptions and not no_auto_desc:
             fields.append(Field(description=desc_sep.sep.join(descriptions)))
 
-        return Annotated[base, *other, FieldInfo.merge_field_infos(*fields)]
+        return Annotated[base, *other, merge_field_infos(*fields)]
 
     # list[T], dict[K,V], tuple...
     if origin is not None:
@@ -163,7 +210,7 @@ class ParamModelInfo:
                 kwargs[pname] = value
 
         # 兜底：模型中有但签名中没有的字段 → kwargs
-        for field_name in model.model_fields:
+        for field_name in type(model).model_fields:
             if field_name not in consumed:
                 kwargs[field_name] = getattr(model, field_name)
 
