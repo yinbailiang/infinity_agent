@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import random
+import ssl
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Dict, Optional
 
@@ -20,6 +21,29 @@ from .config import OpenAIConnectionConfig
 from .request_models import ChatCompletionRequest
 
 logger = logging.getLogger(__name__)
+
+
+
+def _build_ssl_context() -> ssl.SSLContext:
+    """构建带 CA 信任库的 SSL 上下文。
+
+    某些系统（如 NixOS）上 Python 默认 CA 路径（/etc/ssl/cert.pem）不存在，
+    导致 `ssl.create_default_context()` 加载不到任何根证书，所有 TLS 握手都会失败
+    （报错形如 `SSLCertVerificationError: self-signed certificate in certificate chain`）。
+
+    策略：先尝试默认上下文（尊重 SSL_CERT_FILE 等环境变量）；
+    若未加载到任何 CA，则回退到 certifi 自带的证书包。
+    """
+    ctx = ssl.create_default_context()
+    if not ctx.get_ca_certs():
+        try:
+            import certifi
+
+            ctx = ssl.create_default_context(cafile=certifi.where())
+        except ImportError:
+            # 没有 certifi 时保持默认行为，让原有错误信息继续暴露
+            pass
+    return ctx
 
 
 class ConnectionManager:
@@ -53,6 +77,7 @@ class ConnectionManager:
                         'Content-Type': 'application/json',
                     },
                     timeout=timeout_config,
+                    connector=aiohttp.TCPConnector(ssl=_build_ssl_context())
                 )
                 logger.debug('Created new aiohttp ClientSession')
             return self._session

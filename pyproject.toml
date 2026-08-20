@@ -33,6 +33,7 @@ requires-python = ">=3.12"
 dependencies = [
     "pydantic",
     "aiohttp",
+    "certifi",
 ]
 
 [project.urls]

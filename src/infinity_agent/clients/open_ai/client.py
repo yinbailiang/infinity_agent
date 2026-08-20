@@ -11,6 +11,7 @@ import logging
 import types
 from typing import AsyncGenerator, List, Optional
 
+from ...clients.config import RequestConfig
 from ...models import (
     DoneChunk,
     FinishChunk,
@@ -24,6 +25,7 @@ from ...models import (
 )
 from ..base import LLMClient
 from ..exceptions import (
+    LLMConfigError,
     LLMContentFilterError,
     LLMStreamError,
 )
@@ -98,10 +100,10 @@ class OpenAIClient(LLMClient):
     ) -> Optional[bool]:
         await self._conn.close()
 
-    async def stream_chat(  # pyright: ignore[reportIncompatibleMethodOverride]
+    async def stream_chat(
         self,
         messages: Messages,
-        config: Optional[OpenAIRequestConfig] = None,
+        config: Optional[RequestConfig] = None,
     ) -> AsyncGenerator[StreamChunk, None]:
         """流式对话，自动聚合 tool_calls 分片并产出完整 AggregatedToolCall。
 
@@ -121,6 +123,11 @@ class OpenAIClient(LLMClient):
         :param config: 请求级别配置（工具、用量统计、响应格式等）
         """
         request_config = config or OpenAIRequestConfig()
+        if not isinstance(request_config, OpenAIRequestConfig):
+            raise LLMConfigError(
+                f'OpenAIClient.stream_chat expects OpenAIRequestConfig, '
+                f'got {type(request_config).__name__}'
+            )
         request_model = self._build_stream_payload(messages, request_config)
         accumulator = _ToolCallAccumulator()
 
