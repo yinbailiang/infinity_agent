@@ -23,7 +23,6 @@ from .request_models import ChatCompletionRequest
 logger = logging.getLogger(__name__)
 
 
-
 def _build_ssl_context() -> ssl.SSLContext:
     """构建带 CA 信任库的 SSL 上下文。
 
@@ -77,7 +76,7 @@ class ConnectionManager:
                         'Content-Type': 'application/json',
                     },
                     timeout=timeout_config,
-                    connector=aiohttp.TCPConnector(ssl=_build_ssl_context())
+                    connector=aiohttp.TCPConnector(ssl=_build_ssl_context()),
                 )
                 logger.debug('Created new aiohttp ClientSession')
             return self._session
@@ -105,9 +104,7 @@ class ConnectionManager:
             delay = delay * (0.75 + random.random() * 0.5)  # ±25% 抖动
         return delay
 
-    async def _do_request(
-        self, endpoint: str, request_model: ChatCompletionRequest
-    ) -> aiohttp.ClientResponse:
+    async def _do_request(self, endpoint: str, request_model: ChatCompletionRequest) -> aiohttp.ClientResponse:
         """执行单次 POST 请求并校验 HTTP 状态码。
 
         Returns:

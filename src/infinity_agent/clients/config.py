@@ -8,5 +8,6 @@ class ClientConfig(BaseModel):
 
     provider: str = Field(description='服务提供商标识（如 openai）')
 
+
 class RequestConfig(BaseModel):
     """LLM 请求配置基类"""

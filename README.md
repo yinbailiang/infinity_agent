@@ -73,4 +73,8 @@ infinity_agent/
 
 ## 📄 License
 
-MIT
+[MIT](LICENSE.md)
+
+## Part of InfinitySystem
+
+![icon](docs/res/infinity_icon/256x256.png)

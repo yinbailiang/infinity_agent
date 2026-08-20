@@ -111,7 +111,6 @@ class ToolRegistry:
             raw_return=result.return_model.raw,
         )
         logger.debug('Registered tool: %s', tool_name)
-    
 
     @property
     def definitions(self) -> List[ToolDefinition]:

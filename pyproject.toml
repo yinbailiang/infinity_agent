@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Framework :: AsyncIO",
 ]
@@ -100,7 +101,7 @@ line-ending = "lf"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
 reportMissingImports = "error"
-exclude = ["tests", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
+exclude = ["**/node_modules", "**/__pycache__", "**/.*", ".venv"]
 venvPath = "."
 venv = ".venv"
 

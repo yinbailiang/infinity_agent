@@ -11,6 +11,8 @@ import logging
 import types
 from typing import AsyncGenerator, List, Optional
 
+from pydantic import ValidationError
+
 from ...clients.config import RequestConfig
 from ...models import (
     DoneChunk,
@@ -125,8 +127,7 @@ class OpenAIClient(LLMClient):
         request_config = config or OpenAIRequestConfig()
         if not isinstance(request_config, OpenAIRequestConfig):
             raise LLMConfigError(
-                f'OpenAIClient.stream_chat expects OpenAIRequestConfig, '
-                f'got {type(request_config).__name__}'
+                f'OpenAIClient.stream_chat expects OpenAIRequestConfig, got {type(request_config).__name__}'
             )
         request_model = self._build_stream_payload(messages, request_config)
         accumulator = _ToolCallAccumulator()
@@ -174,7 +175,7 @@ class OpenAIClient(LLMClient):
             data_str: str = line[5:].strip()
             try:
                 yield StreamEvent.model_validate_json(data_str)
-            except json.JSONDecodeError as e:
+            except (json.JSONDecodeError, ValidationError) as e:
                 raise LLMStreamError(
                     f'JSON decode error in stream: {e}',
                     original_error=e,

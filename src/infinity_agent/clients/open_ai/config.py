@@ -34,11 +34,13 @@ class OpenAIConnectionConfig(BaseModel):
 class OpenAIConfig(ClientConfig):
     """OpenAI 兼容 API 客户端配置（连接层面，整个客户端生命周期不变）"""
 
-    provider: Literal['openai'] = 'openai' # pyright: ignore[reportIncompatibleVariableOverride]
+    provider: Literal['openai'] = 'openai'  # pyright: ignore[reportIncompatibleVariableOverride]
     model: str = Field(description='模型名称')
     api_key: str = Field(description='API 密钥')
     base_url: str = Field(default='https://api.openai.com/v1', description='API 基础 URL')
-    connection: OpenAIConnectionConfig = Field(default_factory=OpenAIConnectionConfig, description='HTTP 连接与重试配置')
+    connection: OpenAIConnectionConfig = Field(
+        default_factory=OpenAIConnectionConfig, description='HTTP 连接与重试配置'
+    )
 
 
 class OpenAIRequestConfig(RequestConfig):
