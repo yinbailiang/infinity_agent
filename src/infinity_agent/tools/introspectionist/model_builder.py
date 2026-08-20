@@ -261,6 +261,7 @@ def build_param_model(
         else:
             field_def = build_field_def(param.default)
 
+        assert isinstance(field_def, FieldInfo)
         fields[pname] = (type_form, field_def)
 
     if not fields:
