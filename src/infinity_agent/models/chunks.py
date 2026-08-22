@@ -1,6 +1,6 @@
 """流式响应通用模型定义"""
 
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,11 @@ class UsageStats(BaseModel):
     prompt_tokens: int = Field(ge=0, description='输入令牌数')
     completion_tokens: int = Field(ge=0, description='输出令牌数')
     total_tokens: int = Field(ge=0, description='总令牌数')
+    reasoning_tokens: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description='思考（推理）令牌数，未提供时为 None',
+    )
 
 
 class StreamChunk(BaseModel):
@@ -26,6 +31,13 @@ class TextChunk(StreamChunk):
 
     type: str = Field(default='text')
     text: str = Field(description='文本内容')
+
+
+class ThinkingChunk(StreamChunk):
+    """思考（推理）增量片段，对应 DeepSeek 等模型的 reasoning_content"""
+
+    type: str = Field(default='thinking')
+    text: str = Field(description='思考内容增量')
 
 
 class ToolCallCompleteChunk(StreamChunk):

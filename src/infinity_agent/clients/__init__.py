@@ -3,12 +3,19 @@ from ..models import (
     FinishChunk,
     StreamChunk,
     TextChunk,
+    ThinkingChunk,
     ToolCallCompleteChunk,
     UsageChunk,
     UsageStats,
 )
 from .base import LLMClient
 from .config import ClientConfig, RequestConfig
+from .deepseek import (
+    DeepSeekClient,
+    DeepSeekConfig,
+    DeepSeekRequestConfig,
+    create_deepseek_client,
+)
 from .exceptions import (
     LLMAuthError,
     LLMConfigError,
@@ -38,9 +45,14 @@ __all__: list[str] = [
     # -- provider 配置 --
     'OpenAIConfig',
     'OpenAIRequestConfig',
+    'DeepSeekConfig',
+    'DeepSeekRequestConfig',
+    'DeepSeekClient',
+    'create_deepseek_client',
     # -- 流式 Chunk --
     'StreamChunk',
     'TextChunk',
+    'ThinkingChunk',
     'ToolCallCompleteChunk',
     'UsageChunk',
     'FinishChunk',

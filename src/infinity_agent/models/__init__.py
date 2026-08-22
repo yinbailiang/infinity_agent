@@ -5,6 +5,7 @@ from .chunks import (
     FinishChunk,
     StreamChunk,
     TextChunk,
+    ThinkingChunk,
     ToolCallCompleteChunk,
     UsageChunk,
     UsageStats,
@@ -43,6 +44,7 @@ __all__ = [
     # -- 流式 Chunk --
     'StreamChunk',
     'TextChunk',
+    'ThinkingChunk',
     'ToolCallCompleteChunk',
     'UsageChunk',
     'FinishChunk',

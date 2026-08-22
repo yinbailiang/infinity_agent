@@ -9,7 +9,7 @@
 import json
 import logging
 import types
-from typing import AsyncGenerator, List, Optional
+from typing import AsyncGenerator, ClassVar, List, Optional
 
 from pydantic import ValidationError
 
@@ -44,7 +44,7 @@ from .response_models import (
 logger = logging.getLogger(__name__)
 
 
-class _ToolCallAccumulator:
+class ToolCallAccumulator:
     """跨 chunk 累积 tool_calls 增量并在完成时产出聚合结果。"""
 
     __slots__ = ('_deltas',)
@@ -74,8 +74,15 @@ class _ToolCallAccumulator:
         )
 
 
+#: 向后兼容别名（旧版私有命名），供既有测试与调用方继续使用
+_ToolCallAccumulator = ToolCallAccumulator
+
+
 class OpenAIClient(LLMClient):
     """OpenAI 兼容 API 的轻量异步客户端"""
+
+    #: SSE 事件解析使用的模型类；子类（如 DeepSeekClient）可替换以支持额外字段
+    _event_cls: ClassVar[type[StreamEvent]] = StreamEvent
 
     def __init__(self, config: OpenAIConfig) -> None:
         self._config = config
@@ -130,7 +137,7 @@ class OpenAIClient(LLMClient):
                 f'OpenAIClient.stream_chat expects OpenAIRequestConfig, got {type(request_config).__name__}'
             )
         request_model = self._build_stream_payload(messages, request_config)
-        accumulator = _ToolCallAccumulator()
+        accumulator = ToolCallAccumulator()
 
         async with self._conn.request('chat/completions', request_model) as line_stream:
             async for event in self._parse_sse_stream(line_stream):
@@ -174,7 +181,7 @@ class OpenAIClient(LLMClient):
             # 解析 JSON
             data_str: str = line[5:].strip()
             try:
-                yield StreamEvent.model_validate_json(data_str)
+                yield self._event_cls.model_validate_json(data_str)
             except (json.JSONDecodeError, ValidationError) as e:
                 raise LLMStreamError(
                     f'JSON decode error in stream: {e}',
@@ -198,7 +205,7 @@ class OpenAIClient(LLMClient):
     async def _handle_sse_event(
         self,
         event: StreamEvent,
-        accumulator: _ToolCallAccumulator,
+        accumulator: ToolCallAccumulator,
         include_usage: bool,
     ) -> AsyncGenerator[StreamChunk, None]:
         """按固定管线处理单个 SSE 事件"""
@@ -238,7 +245,7 @@ class OpenAIClient(LLMClient):
 
     async def _on_stream_end(
         self,
-        accumulator: _ToolCallAccumulator,
+        accumulator: ToolCallAccumulator,
     ) -> AsyncGenerator[StreamChunk, None]:
         """流终止时的收尾：补刷未完成的 tool_calls，产出 DONE 标记。"""
         chunk = accumulator.flush_as_chunk()

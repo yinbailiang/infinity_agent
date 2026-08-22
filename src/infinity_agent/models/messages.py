@@ -78,6 +78,10 @@ class Message(BaseModel):
     role: MessageRole = Field(description='消息角色')
     name: Optional[str] = Field(default=None, description='可选的参与者名称')
     content: Optional[MessageContent] = Field(description='消息内容，支持文本或多模态混合')
+    reasoning_content: Optional[str] = Field(
+        default=None,
+        description='思考（推理）内容，仅供 assistant 消息使用，多轮对话时回传给模型',
+    )
     tool_calls: Optional[List[ToolCall]] = Field(default=None, description='工具调用列表（assistant 角色发起）')
     tool_call_id: Optional[str] = Field(default=None, description='工具调用 ID（tool 角色回传结果时使用）')
 
@@ -98,6 +102,8 @@ class Message(BaseModel):
             raise ValueError('tool 消息必须提供 tool_call_id')
         if self.role == MessageRole.USER and self.content is None:
             raise ValueError('user 消息必须有内容')
+        if self.reasoning_content is not None and self.role != MessageRole.ASSISTANT:
+            raise ValueError('reasoning_content 仅允许在 assistant 消息中使用')
         return self
 
     # ---- 快捷构造器 ----
@@ -117,10 +123,16 @@ class Message(BaseModel):
         cls,
         content: Optional[str] = None,
         *,
+        reasoning_content: Optional[str] = None,
         tool_calls: Optional[List[ToolCall]] = None,
     ) -> 'Message':
-        """创建 assistant 消息"""
-        return cls(role=MessageRole.ASSISTANT, content=content, tool_calls=tool_calls)
+        """创建 assistant 消息（可选携带思考内容，供 DeepSeek 等多轮回传）"""
+        return cls(
+            role=MessageRole.ASSISTANT,
+            content=content,
+            reasoning_content=reasoning_content,
+            tool_calls=tool_calls,
+        )
 
     @classmethod
     def tool(cls, content: str, *, tool_call_id: str) -> 'Message':

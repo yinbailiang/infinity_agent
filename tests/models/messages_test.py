@@ -155,6 +155,14 @@ class TestMessageValidation:
         msg = Message.assistant(content=None, tool_calls=[tc])
         assert msg.tool_calls == [tc]
 
+    def test_assistant_with_reasoning_content(self) -> None:
+        msg = Message.assistant('Sure!', reasoning_content='让我想想')
+        assert msg.reasoning_content == '让我想想'
+
+    def test_reasoning_content_only_for_assistant(self) -> None:
+        with pytest.raises(ValidationError, match='reasoning_content'):
+            Message(role=MessageRole.USER, content='hi', reasoning_content='x')
+
     def test_tool_message(self) -> None:
         msg = Message.tool('result', tool_call_id='c1')
         assert msg.role == MessageRole.TOOL
@@ -211,3 +219,8 @@ class TestMessageSerialization:
     def test_role_serialized_to_value(self) -> None:
         msg = Message.user('hi')
         assert msg.model_dump(mode='json')['role'] == 'user'
+
+    def test_reasoning_content_serialized(self) -> None:
+        msg = Message.assistant('Sure!', reasoning_content='思考')
+        dumped = msg.model_dump(mode='json')
+        assert dumped['reasoning_content'] == '思考'
