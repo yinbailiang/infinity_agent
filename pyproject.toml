@@ -1,6 +1,6 @@
 [project]
 name = "infinity_agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "强类型、可扩展的 LLM 异步客户端库，支持 OpenAI 兼容 API、流式对话、工具调用与多模型消息格式"
 readme = "README.md"
 license = { text = "MIT" }
