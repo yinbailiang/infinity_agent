@@ -127,6 +127,13 @@ class TestPropFromSchema:
         assert prop.items is not None
         assert prop.items.type == 'integer'
 
+    def test_array_with_empty_items_schema(self) -> None:
+        """``items={}``（任意元素，如 ``list[Any]``）不应因空 dict 被跳过"""
+        prop = prop_from_schema({'type': 'array', 'items': {}})
+        assert prop.type == 'array'
+        assert prop.items is not None
+        assert prop.items.type == 'string'
+
     def test_dict_str_to_str(self) -> None:
         prop = prop_from_schema(
             {

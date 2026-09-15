@@ -146,9 +146,11 @@ def prop_from_schema(prop_schema: dict[str, Any]) -> ParameterProperty:
             kwargs['required'] = nested_req
 
     # 数组元素
+    # 注意 ``items={}`` 表示「任意元素」（如 ``list[Any]``），是合法 schema，
+    # 不能按 falsy 跳过，否则 ``type='array'`` 缺失 items 会触发 ParameterProperty 校验失败
     items_schema = prop_schema.get('items')
-    if items_schema and raw_type == 'array':
-        kwargs['items'] = prop_from_schema(items_schema)
+    if raw_type == 'array' and isinstance(items_schema, dict):
+        kwargs['items'] = prop_from_schema(cast(dict[str, Any], items_schema))
 
     # 自由键值对（dict[str, X] 等）
     add_props = prop_schema.get('additionalProperties')
