@@ -1,6 +1,6 @@
 """LLM 模块公共 API"""
 
-__version__ = '0.1.0'
+__version__ = '0.2.1'
 
 from .models.chunks import (
     DoneChunk,
