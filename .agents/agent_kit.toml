@@ -1,0 +1,24 @@
+# agent_kit 项目配置（由 agent-kit 生成；可手工微调，改动在下次 update 时生效）
+kit_version = 1
+
+[project]
+name = "infinity_agent"
+summary = "强类型、可扩展的 LLM 异步客户端库（OpenAI 兼容 API、流式对话、工具调用）"
+package = "infinity_agent"
+src_dir = "src/infinity_agent"
+repo_url = "https://github.com/yinbailiang/infinity_agent"
+pypi_name = "infinity_agent"
+extra_sources = []
+
+[toolchain]
+setup = "uv sync --extra dev && uv run pre-commit install"
+lint = "uv run ruff check ."
+format = "uv run ruff format ."
+typecheck = "uv run pyright"
+test = "uv run pytest tests/ --cov=infinity_agent --cov-fail-under=80 -q"
+extras = [
+  "uv run interrogate src/infinity_agent/ --generate-badge docs/res/interrogate_badge.svg :: 公开 API docstring 覆盖率检查与徽章生成",
+]
+
+[skills]
+enabled = ["modify-core-api", "pre-commit-check", "write-tests", "write-docs", "write-skill", "publish"]

@@ -52,6 +52,7 @@ dev = [
     "pyright",
     "pre-commit",
     "infinity_agent[test]",
+    "infinity-agent-kit>=1.0.0",
 ]
 
 [tool.pytest.ini_options]
