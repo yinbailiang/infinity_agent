@@ -53,6 +53,38 @@ class TestMultiModalContent:
         assert mm.image_url is not None
         assert mm.image_url.url == 'https://example.com/a.png'
 
+    def test_text_part_helper(self) -> None:
+        mm = MultiModalContent.text_part('看这里')
+        assert mm.type == ContentType.TEXT
+        assert mm.text == '看这里'
+        assert mm.image_url is None
+
+    def test_image_part_helper(self) -> None:
+        mm = MultiModalContent.image_part(
+            'data:image/png;base64,AAAA', detail='high'
+        )
+        assert mm.type == ContentType.IMAGE_URL
+        assert mm.text is None
+        assert mm.image_url is not None
+        assert mm.image_url.url == 'data:image/png;base64,AAAA'
+        assert mm.image_url.detail == 'high'
+
+    def test_image_part_helper_without_detail(self) -> None:
+        mm = MultiModalContent.image_part('https://example.com/a.png')
+        assert mm.image_url is not None
+        assert mm.image_url.detail is None
+
+    def test_serialization_omits_empty_fields(self) -> None:
+        """序列化时不把 None 字段塞进请求体（严格 provider 会拒收）。"""
+        assert MultiModalContent.text_part('hi').model_dump(mode='json') == {
+            'type': 'text',
+            'text': 'hi',
+        }
+        assert MultiModalContent.image_part('https://x/a.png').model_dump(mode='json') == {
+            'type': 'image_url',
+            'image_url': {'url': 'https://x/a.png'},
+        }
+
     def test_text_requires_text(self) -> None:
         with pytest.raises(ValidationError):
             MultiModalContent(type=ContentType.TEXT)
@@ -168,6 +200,28 @@ class TestMessageValidation:
         assert msg.role == MessageRole.TOOL
         assert msg.tool_call_id == 'c1'
 
+    def test_tool_message_multimodal_content(self) -> None:
+        """tool 消息可以携带多模态数组（如工具返回的截图）。"""
+        parts = [
+            MultiModalContent.text_part('截图如下'),
+            MultiModalContent.image_part('data:image/png;base64,AAAA'),
+        ]
+        msg = Message.tool(parts, tool_call_id='c1')
+        assert msg.content == parts
+        assert msg.role == MessageRole.TOOL
+
+    def test_tool_message_multimodal_round_trip(self) -> None:
+        """多模态 tool 消息能经 JSON 序列化后原样还原。"""
+        msg = Message.tool(
+            [MultiModalContent.image_part('https://example.com/a.png', detail='low')],
+            tool_call_id='c1',
+        )
+        restored = Message.model_validate(msg.model_dump(mode='json'))
+        assert isinstance(restored.content, list)
+        assert restored.content[0].image_url is not None
+        assert restored.content[0].image_url.url == 'https://example.com/a.png'
+        assert restored.content[0].image_url.detail == 'low'
+
     def test_tool_calls_only_for_assistant(self) -> None:
         tc = ToolCall(id='c1', function={'name': 'f', 'arguments': {}})
         with pytest.raises(ValidationError, match='tool_calls'):
@@ -186,10 +240,15 @@ class TestMessageValidation:
         with pytest.raises(ValidationError, match='多模态'):
             Message(role=MessageRole.ASSISTANT, content=[mm])
 
-    def test_tool_content_must_be_string(self) -> None:
+    def test_tool_content_must_be_text_or_multimodal(self) -> None:
         # content 字段校验（Union[str, list]）会先于角色一致性校验失败
         with pytest.raises(ValidationError):
             Message(role=MessageRole.TOOL, content=123, tool_call_id='c1')
+
+    def test_tool_content_required(self) -> None:
+        """tool 消息不能没有内容（放开多模态后不能退化成 None 合法）。"""
+        with pytest.raises(ValidationError, match='tool 消息必须提供内容'):
+            Message(role=MessageRole.TOOL, content=None, tool_call_id='c1')
 
     def test_tool_requires_tool_call_id(self) -> None:
         with pytest.raises(ValidationError, match='tool_call_id'):

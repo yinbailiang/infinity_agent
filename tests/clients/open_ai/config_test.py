@@ -10,7 +10,13 @@ from infinity_agent.clients.open_ai.config import (
     build_chat_completion_request,
 )
 from infinity_agent.clients.open_ai.request_models import ResponseFormat
-from infinity_agent.models import Message, ToolDefinition
+from infinity_agent.models import (
+    FunctionCall,
+    Message,
+    MultiModalContent,
+    ToolCall,
+    ToolDefinition,
+)
 
 
 class TestOpenAIConnectionConfig:
@@ -126,6 +132,65 @@ class TestBuildChatCompletionRequest:
         messages = [Message.user('Hi')]
         payload = build_chat_completion_request(messages, openai_config)
         assert payload.tools is None
+
+    def test_multimodal_tool_result_passes_through(
+        self, openai_config: OpenAIConfig
+    ) -> None:
+        """tool 结果里的图片原样进入请求体（DeepSeek 支持工具返回多模态）。"""
+        messages = [
+            Message.assistant(
+                content=None,
+                tool_calls=[
+                    ToolCall(
+                        id='c1',
+                        function=FunctionCall(name='screenshot', arguments={}),
+                    )
+                ],
+            ),
+            Message.tool(
+                [
+                    MultiModalContent.text_part('截图如下'),
+                    MultiModalContent.image_part(
+                        'data:image/png;base64,AAAA', detail='low'
+                    ),
+                ],
+                tool_call_id='c1',
+            ),
+        ]
+        payload = build_chat_completion_request(messages, openai_config)
+
+        tool_message = payload.messages[1]
+        assert tool_message['role'] == 'tool'
+        assert tool_message['tool_call_id'] == 'c1'
+        assert tool_message['content'] == [
+            {'type': 'text', 'text': '截图如下'},
+            {
+                'type': 'image_url',
+                'image_url': {'url': 'data:image/png;base64,AAAA', 'detail': 'low'},
+            },
+        ]
+
+    def test_multimodal_user_message_passes_through(
+        self, openai_config: OpenAIConfig
+    ) -> None:
+        """user 多模态消息同样原样进入请求体（回归保护）。"""
+        messages = [
+            Message.user(
+                [
+                    MultiModalContent.text_part('这是什么'),
+                    MultiModalContent.image_part('https://example.com/a.png'),
+                ]
+            )
+        ]
+        payload = build_chat_completion_request(messages, openai_config)
+
+        assert payload.messages[0]['content'] == [
+            {'type': 'text', 'text': '这是什么'},
+            {
+                'type': 'image_url',
+                'image_url': {'url': 'https://example.com/a.png'},
+            },
+        ]
 
     def test_response_format_included(self, openai_config: OpenAIConfig) -> None:
         fmt = ResponseFormat(type='json_object')

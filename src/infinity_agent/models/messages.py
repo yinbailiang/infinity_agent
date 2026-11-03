@@ -2,7 +2,13 @@ import json
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, field_serializer, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    field_serializer,
+    model_serializer,
+    model_validator,
+)
 
 
 class ContentType(str, Enum):
@@ -18,7 +24,7 @@ class ImageUrl(BaseModel):
 
 
 class MultiModalContent(BaseModel):
-    """多模态消息内容单元"""
+    """多模态消息内容单元（user 消息与 tool 结果均可使用）"""
 
     type: ContentType = Field(description='内容类型')
     text: Optional[str] = Field(default=None, description='文本内容')
@@ -38,6 +44,39 @@ class MultiModalContent(BaseModel):
             if self.text is not None:
                 raise ValueError("text must be None when type='image_url'")
         return self
+
+    @classmethod
+    def text_part(cls, text: str) -> 'MultiModalContent':
+        """构造文本内容单元"""
+        return cls(type=ContentType.TEXT, text=text)
+
+    @classmethod
+    def image_part(
+        cls,
+        url: str,
+        *,
+        detail: Optional[Literal['auto', 'low', 'high']] = None,
+    ) -> 'MultiModalContent':
+        """构造图片内容单元
+
+        :param url: 图片地址，支持 http(s) 链接与 ``data:image/...;base64,`` 内联
+        :param detail: 细节档位 ``auto`` / ``low`` / ``high``；``None`` 表示交给服务端
+        """
+        return cls(type=ContentType.IMAGE_URL, image_url=ImageUrl(url=url, detail=detail))
+
+    @model_serializer
+    def _serialize_compact(self) -> Dict[str, Any]:
+        """只输出与 ``type`` 相关的字段，避免把 ``None`` 塞进请求体。
+
+        多模态消息会原样进入模型请求体，``{"image_url": null}`` 这类空字段会被
+        严格的 provider 拒收，因此这里按需省略。
+        """
+        data: Dict[str, Any] = {'type': self.type.value}
+        if self.text is not None:
+            data['text'] = self.text
+        if self.image_url is not None:
+            data['image_url'] = self.image_url.model_dump(mode='json', exclude_none=True)
+        return data
 
 
 MessageContent = Union[str, List[MultiModalContent]]
@@ -77,7 +116,9 @@ class Message(BaseModel):
 
     role: MessageRole = Field(description='消息角色')
     name: Optional[str] = Field(default=None, description='可选的参与者名称')
-    content: Optional[MessageContent] = Field(description='消息内容，支持文本或多模态混合')
+    content: Optional[MessageContent] = Field(
+        description='消息内容，支持文本或多模态混合（tool 消息亦可携带多模态数组）'
+    )
     reasoning_content: Optional[str] = Field(
         default=None,
         description='思考（推理）内容，仅供 assistant 消息使用，多轮对话时回传给模型',
@@ -96,8 +137,8 @@ class Message(BaseModel):
             raise ValueError('system 消息只支持纯文本内容')
         if self.role == MessageRole.ASSISTANT and isinstance(self.content, list):
             raise ValueError('assistant 消息的 content 不能是多模态数组')
-        if self.role == MessageRole.TOOL and not isinstance(self.content, str):
-            raise ValueError('tool 消息的 content 必须是字符串')
+        if self.role == MessageRole.TOOL and self.content is None:
+            raise ValueError('tool 消息必须提供内容（文本或多模态数组）')
         if self.role == MessageRole.TOOL and self.tool_call_id is None:
             raise ValueError('tool 消息必须提供 tool_call_id')
         if self.role == MessageRole.USER and self.content is None:
@@ -135,8 +176,13 @@ class Message(BaseModel):
         )
 
     @classmethod
-    def tool(cls, content: str, *, tool_call_id: str) -> 'Message':
-        """创建 tool 消息（工具执行结果）"""
+    def tool(
+        cls,
+        content: Union[str, List[MultiModalContent]],
+        *,
+        tool_call_id: str,
+    ) -> 'Message':
+        """创建 tool 消息（工具执行结果，可为文本或多模态数组）"""
         return cls(role=MessageRole.TOOL, content=content, tool_call_id=tool_call_id)
 
 

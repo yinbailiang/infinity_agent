@@ -16,7 +16,7 @@
 | OpenAI 兼容 | 完整实现 OpenAI Chat Completions 流式 API |
 | 工具调用 | ToolRegistry 自动从 Python 函数推断 Tool Schema |
 | 流式对话 | `stream_chat()` 异步生成器，支持 Text / ToolCall / Usage chunk |
-| 多模态消息 | 文本 + 图片 URL 混合内容 |
+| 多模态消息 | 文本 + 图片混合内容：user 消息与 **tool 结果**均可携带，支持 http(s) 与 `data:` URL |
 | 连接管理 | 指数退避重试 + 抖动 + 连接池复用 |
 
 ## 📦 Installation
@@ -29,29 +29,66 @@ pip install infinity_agent
 
 ```python
 from infinity_agent import (
-    Message, Messages,
-    OpenAIConfig, create_client,
+    Message,
+    Messages,
+    OpenAIConfig,
+    create_client,
     ToolRegistry,
 )
 
 # 创建客户端
 config = OpenAIConfig(
-    model="gpt-4o-mini",
-    api_key="sk-...",
+    model='gpt-4o-mini',
+    api_key='sk-...',
 )
 client = create_client(config)
 
 # 流式对话
-messages = Messages([
-    Message.system("你是一个有用的助手"),
-    Message.user("你好"),
-])
+messages = Messages(
+    [
+        Message.system('你是一个有用的助手'),
+        Message.user('你好'),
+    ]
+)
 
 async with client:
     async for chunk in client.stream_chat(messages):
         print(chunk)
 ```
 
+### 🖼 多模态与图片工具结果
+
+`MultiModalContent` 可挂在 user 消息上，也可以作为 **tool 消息的结果**（DeepSeek 等
+provider 支持工具返回图片）；`text_part` / `image_part` 是便捷构造器，`image_part`
+的 `url` 支持 http(s) 链接与 `data:image/...;base64,` 内联：
+
+```python
+from infinity_agent import Message, MultiModalContent
+
+# 用户发图
+messages = [
+    Message.user(
+        [
+            MultiModalContent.text_part('这张图里有什么？'),
+            MultiModalContent.image_part('https://example.com/a.png', detail='low'),
+        ]
+    ),
+]
+
+# 工具返回图片（紧跟在 assistant 的 tool_calls 之后）
+messages.append(
+    Message.tool(
+        [
+            MultiModalContent.text_part('截图如下'),
+            MultiModalContent.image_part('data:image/png;base64,AAAA'),
+        ],
+        tool_call_id='call_1',
+    )
+)
+```
+
+约束（由模型验证器保证）：`system` 与 `assistant` 消息只能是纯文本，`tool` 消息必须
+同时给出 `content` 与 `tool_call_id`。
 ## 🧱 Architecture
 
 ```
