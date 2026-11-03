@@ -200,6 +200,23 @@ class TestBuildChatCompletionRequest:
         )
         assert payload.response_format == fmt
 
+    def test_file_content_part_passes_through(self, openai_config: OpenAIConfig) -> None:
+        """Files API 引用的文件块与 type 平级，原样进入请求体。"""
+        messages = [
+            Message.user(
+                [
+                    MultiModalContent.text_part('看这份文件'),
+                    MultiModalContent.file_part(file_id='file-api-abc'),
+                ]
+            )
+        ]
+        payload = build_chat_completion_request(messages, openai_config)
+
+        assert payload.messages[0]['content'] == [
+            {'type': 'text', 'text': '看这份文件'},
+            {'type': 'file', 'file_id': 'file-api-abc'},
+        ]
+
     def test_stream_false(self, openai_config: OpenAIConfig) -> None:
         messages = [Message.user('Hi')]
         payload = build_chat_completion_request(

@@ -12,6 +12,7 @@ from .chunks import (
 )
 from .messages import (
     ContentType,
+    FilePart,
     FunctionCall,
     ImageUrl,
     Message,
@@ -39,6 +40,7 @@ __all__ = [
     'ContentType',
     'MultiModalContent',
     'ImageUrl',
+    'FilePart',
     'ToolCall',
     'FunctionCall',
     # -- 流式 Chunk --

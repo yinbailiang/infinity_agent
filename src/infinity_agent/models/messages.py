@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union, cast
 
 from pydantic import (
     BaseModel,
@@ -16,11 +16,39 @@ class ContentType(str, Enum):
 
     TEXT = 'text'
     IMAGE_URL = 'image_url'
+    FILE = 'file'
 
 
 class ImageUrl(BaseModel):
     url: str
-    detail: Optional[Literal['auto', 'low', 'high']] = None
+    detail: Optional[Literal['auto', 'low', 'high', 'original']] = None
+
+
+class FilePart(BaseModel):
+    """文件内容单元：Files API 引用或 base64 内联，二者互斥"""
+
+    file_id: Optional[str] = Field(default=None, description='通过 Files API 上传的文件 ID，形如 file-api-...')
+    file_data: Optional[str] = Field(default=None, description='base64 data URL 形式的内联文件')
+    filename: Optional[str] = Field(default=None, description='文件名，仅在配合 file_data 时有效')
+
+    @model_validator(mode='after')
+    def validate_source(self) -> 'FilePart':
+        """``file_id`` 与 ``file_data`` 必须二选一（两者都传或都不传都会被服务端拒收）"""
+        if (self.file_id is None) == (self.file_data is None):
+            raise ValueError('file_id 与 file_data 必须二选一')
+        return self
+
+    @model_serializer
+    def serialize_compact(self) -> Dict[str, Any]:
+        """省略空字段，保持与 ``type`` 平级的扁平结构"""
+        data: Dict[str, Any] = {}
+        if self.file_id is not None:
+            data['file_id'] = self.file_id
+        if self.file_data is not None:
+            data['file_data'] = self.file_data
+        if self.filename is not None:
+            data['filename'] = self.filename
+        return data
 
 
 class MultiModalContent(BaseModel):
@@ -29,20 +57,42 @@ class MultiModalContent(BaseModel):
     type: ContentType = Field(description='内容类型')
     text: Optional[str] = Field(default=None, description='文本内容')
     image_url: Optional[ImageUrl] = Field(default=None, description='图片/媒体 URL')
+    file: Optional[FilePart] = Field(default=None, description='文件内容（Files API 引用或 base64 内联）')
+
+    @model_validator(mode='before')
+    @classmethod
+    def pack_file_fields(cls, data: object) -> object:
+        """把与 ``type`` 平级的 ``file_id`` / ``file_data`` / ``filename`` 收进 ``file``。
+
+        服务端的 ``file`` 内容块是扁平的（``{"type": "file", "file_id": ...}``），
+        这里做一次打包，保证 ``model_dump`` 的输出能被 ``model_validate`` 原样读回。
+        """
+        if not isinstance(data, dict):
+            return data
+        payload = cast(Dict[str, Any], data)
+        if payload.get('type') != ContentType.FILE.value or 'file' in payload:
+            return payload
+        packed = {key: payload[key] for key in ('file_id', 'file_data', 'filename') if key in payload}
+        if not packed:
+            return payload
+        rest = {key: value for key, value in payload.items() if key not in packed}
+        rest['file'] = packed
+        return rest
 
     @model_validator(mode='after')
     def validate_mutual_exclusion(self) -> 'MultiModalContent':
-        """确保 text 和 image_url 互斥且与 type 匹配"""
-        if self.type == ContentType.TEXT:
-            if self.text is None:
-                raise ValueError("text is required when type='text'")
-            if self.image_url is not None:
-                raise ValueError("image_url must be None when type='text'")
-        elif self.type == ContentType.IMAGE_URL:
-            if self.image_url is None:
-                raise ValueError("image_url is required when type='image_url'")
-            if self.text is not None:
-                raise ValueError("text must be None when type='image_url'")
+        """确保只有一个载荷字段，且与 type 匹配"""
+        payloads: Dict[str, object] = {
+            'text': self.text,
+            'image_url': self.image_url,
+            'file': self.file,
+        }
+        field = self.type.value
+        if payloads[field] is None:
+            raise ValueError(f'{field} is required when type={field!r}')
+        extras = sorted(name for name, value in payloads.items() if name != field and value is not None)
+        if extras:
+            raise ValueError(f'{extras} must be None when type={field!r}')
         return self
 
     @classmethod
@@ -55,27 +105,50 @@ class MultiModalContent(BaseModel):
         cls,
         url: str,
         *,
-        detail: Optional[Literal['auto', 'low', 'high']] = None,
+        detail: Optional[Literal['auto', 'low', 'high', 'original']] = None,
     ) -> 'MultiModalContent':
         """构造图片内容单元
 
         :param url: 图片地址，支持 http(s) 链接与 ``data:image/...;base64,`` 内联
-        :param detail: 细节档位 ``auto`` / ``low`` / ``high``；``None`` 表示交给服务端
+        :param detail: 细节档位 ``auto`` / ``low`` / ``high`` / ``original``；``None`` 表示交给服务端
         """
         return cls(type=ContentType.IMAGE_URL, image_url=ImageUrl(url=url, detail=detail))
 
+    @classmethod
+    def file_part(
+        cls,
+        *,
+        file_id: Optional[str] = None,
+        file_data: Optional[str] = None,
+        filename: Optional[str] = None,
+    ) -> 'MultiModalContent':
+        """构造文件内容单元
+
+        :param file_id: Files API 返回的文件 ID（形如 ``file-api-...``）
+        :param file_data: base64 data URL 形式的内联文件
+        :param filename: 可选文件名，仅在配合 ``file_data`` 时有效
+
+        :raises ValueError: ``file_id`` 与 ``file_data`` 未严格二选一
+        """
+        return cls(
+            type=ContentType.FILE,
+            file=FilePart(file_id=file_id, file_data=file_data, filename=filename),
+        )
+
     @model_serializer
-    def _serialize_compact(self) -> Dict[str, Any]:
+    def serialize_compact(self) -> Dict[str, Any]:
         """只输出与 ``type`` 相关的字段，避免把 ``None`` 塞进请求体。
 
         多模态消息会原样进入模型请求体，``{"image_url": null}`` 这类空字段会被
-        严格的 provider 拒收，因此这里按需省略。
+        严格的 provider 拒收，因此这里按需省略；``file`` 的字段与 ``type`` 平级。
         """
         data: Dict[str, Any] = {'type': self.type.value}
         if self.text is not None:
             data['text'] = self.text
         if self.image_url is not None:
             data['image_url'] = self.image_url.model_dump(mode='json', exclude_none=True)
+        if self.file is not None:
+            data.update(self.file.model_dump(mode='json'))
         return data
 
 

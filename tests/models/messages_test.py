@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from infinity_agent.models import (
     ContentType,
+    FilePart,
     FunctionCall,
     ImageUrl,
     Message,
@@ -30,6 +31,7 @@ class TestEnums:
     def test_content_type_values(self) -> None:
         assert ContentType.TEXT.value == 'text'
         assert ContentType.IMAGE_URL.value == 'image_url'
+        assert ContentType.FILE.value == 'file'
 
 
 # ============================================================================
@@ -84,6 +86,47 @@ class TestMultiModalContent:
             'type': 'image_url',
             'image_url': {'url': 'https://x/a.png'},
         }
+
+    def test_original_detail_level(self) -> None:
+        """DeepSeek 支持 original 档位（与 high 等价）。"""
+        mm = MultiModalContent.image_part('https://x/a.png', detail='original')
+        assert mm.image_url is not None
+        assert mm.image_url.detail == 'original'
+
+    def test_file_part_with_file_id(self) -> None:
+        mm = MultiModalContent.file_part(file_id='file-api-abc')
+        assert mm.type == ContentType.FILE
+        assert mm.file is not None
+        assert mm.file.file_id == 'file-api-abc'
+        assert mm.model_dump(mode='json') == {'type': 'file', 'file_id': 'file-api-abc'}
+
+    def test_file_part_with_inline_data(self) -> None:
+        mm = MultiModalContent.file_part(
+            file_data='data:image/jpeg;base64,AAAA', filename='a.jpg'
+        )
+        assert mm.model_dump(mode='json') == {
+            'type': 'file',
+            'file_data': 'data:image/jpeg;base64,AAAA',
+            'filename': 'a.jpg',
+        }
+
+    def test_file_part_round_trip_from_flat_payload(self) -> None:
+        """服务端的 file 块是扁平的，能原样读回。"""
+        mm = MultiModalContent.model_validate({'type': 'file', 'file_id': 'file-api-abc'})
+        assert mm.file is not None
+        assert mm.file.file_id == 'file-api-abc'
+
+    def test_file_part_requires_exactly_one_source(self) -> None:
+        with pytest.raises(ValidationError):
+            MultiModalContent.file_part()
+        with pytest.raises(ValidationError):
+            MultiModalContent.file_part(file_id='file-api-abc', file_data='data:image/jpeg;base64,AAAA')
+
+    def test_file_payload_rejects_and_requires_correct_field(self) -> None:
+        with pytest.raises(ValidationError):
+            MultiModalContent(type=ContentType.FILE, text='hi')
+        with pytest.raises(ValidationError):
+            MultiModalContent(type=ContentType.TEXT, text='hi', file=FilePart(file_id='file-api-abc'))
 
     def test_text_requires_text(self) -> None:
         with pytest.raises(ValidationError):

@@ -13,6 +13,7 @@ from .models.chunks import (
 )
 from .models.messages import (
     ContentType,
+    FilePart,
     FunctionCall,
     ImageUrl,
     Message,
@@ -40,6 +41,7 @@ __all__ = [
     'ContentType',
     'MultiModalContent',
     'ImageUrl',
+    'FilePart',
     # -- 工具调用 --
     'ToolCall',
     'FunctionCall',
