@@ -5,7 +5,19 @@ import logging
 import typing
 from copy import copy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Literal, Never, Optional, get_args, get_origin
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Dict,
+    List,
+    Literal,
+    Never,
+    Optional,
+    cast,
+    get_args,
+    get_origin,
+)
 
 from pydantic import BaseModel, Field, RootModel, create_model
 from pydantic.fields import FieldInfo
@@ -53,7 +65,9 @@ def merge_field_infos(*field_infos: FieldInfo, **overrides: Any) -> FieldInfo:
     if len(field_infos) == 1:
         # No merging necessary, but we still need to make a copy and apply the overrides
         field_info = copy(field_infos[0])
-        field_info._attributes_set.update(overrides)  # pyright: ignore[reportPrivateUsage]
+        # pydantic 把 ``_attributes_set`` 标注成内部字典，用 getattr 取值后显式收敛类型
+        attributes = cast(dict[str, Any], getattr(field_info, '_attributes_set'))
+        attributes.update(overrides)
 
         default_override = overrides.pop('default', PydanticUndefined)
         if default_override is Ellipsis:
@@ -63,12 +77,12 @@ def merge_field_infos(*field_infos: FieldInfo, **overrides: Any) -> FieldInfo:
 
         for k, v in overrides.items():
             setattr(field_info, k, v)
-        return field_info  # type: ignore
+        return field_info
 
     new_kwargs: dict[str, Any] = {}
     metadata: dict[Any, Any] = {}
     for field_info in field_infos:
-        new_kwargs.update(field_info._attributes_set)  # type: ignore
+        new_kwargs.update(cast(dict[str, Any], getattr(field_info, '_attributes_set')))
         for x in field_info.metadata:
             if not isinstance(x, FieldInfo):
                 metadata[type(x)] = x
